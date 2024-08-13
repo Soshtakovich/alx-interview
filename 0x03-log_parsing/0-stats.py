@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import sys
 import signal
+import re
 
 # Global variables to store statistics
 total_size = 0
@@ -15,6 +16,10 @@ status_codes_count = {
     500: 0
 }
 
+log_line_regex = re.compile(
+    r'^\S+ - \[\S+ \S+\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$'
+)
+
 def print_stats():
     """ Function to print the accumulated statistics """
     print("File size: {}".format(total_size))
@@ -25,16 +30,11 @@ def print_stats():
 def parse_line(line):
     """ Function to parse a single line and update statistics """
     global total_size
-    parts = line.split()
+    match = log_line_regex.match(line)
     
-    # Validate line format
-    if len(parts) < 7 or parts[5] != '"GET' or parts[6] != '/projects/260':
-        return
-
-    try:
-        # Extract status code and file size
-        status_code = int(parts[8])
-        file_size = int(parts[9])
+    if match:
+        status_code = int(match.group(1))
+        file_size = int(match.group(2))
 
         # Update total size
         total_size += file_size
@@ -42,8 +42,6 @@ def parse_line(line):
         # Update status code count if it's a recognized code
         if status_code in status_codes_count:
             status_codes_count[status_code] += 1
-    except (ValueError, IndexError):
-        pass
 
 def signal_handler(sig, frame):
     """ Signal handler for keyboard interruption (Ctrl + C) """
@@ -56,7 +54,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # Process input line by line
 line_count = 0
 for line in sys.stdin:
-    parse_line(line)
+    parse_line(line.strip())
     line_count += 1
 
     # Print stats every 10 lines
