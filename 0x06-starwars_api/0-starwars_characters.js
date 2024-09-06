@@ -2,16 +2,30 @@
 
 const request = require('request');
 
-request('https://swapi-api.hbtn.io/api/films/' + process.argv[2], function (err, res, body) {
-  if (err) throw err;
-  const actors = JSON.parse(body).characters;
-  exactOrder(actors, 0);
+// Get the movie ID from the command line argument
+const movieId = process.argv[2];
+
+// Base URL for the Star Wars API
+const apiUrl = `https://swapi.dev/api/films/${movieId}/`;
+
+// Send a request to the SWAPI for the given movie
+request(apiUrl, (error, response, body) => {
+    if (!error && response.statusCode === 200) {
+        const filmData = JSON.parse(body);
+        
+        // Get the list of character URLs from the film data
+        const characters = filmData.characters;
+
+        // Loop through each character URL and fetch the character name
+        characters.forEach(characterUrl => {
+            request(characterUrl, (error, response, body) => {
+                if (!error && response.statusCode === 200) {
+                    const characterData = JSON.parse(body);
+                    console.log(characterData.name);
+                }
+            });
+        });
+    } else {
+        console.error('Failed to retrieve the movie data.');
+    }
 });
-const exactOrder = (actors, x) => {
-  if (x === actors.length) return;
-  request(actors[x], function (err, res, body) {
-    if (err) throw err;
-    console.log(JSON.parse(body).name);
-    exactOrder(actors, x + 1);
-  });
-};
